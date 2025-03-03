@@ -6,7 +6,6 @@ import { AddTransactionDrawer } from '@/components/transaction/add-transaction-d
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { Toaster } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -19,7 +18,6 @@ export default function Dashboard() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
-            <Toaster />
             <div className="mt-4 mr-4 ml-8 flex justify-between">
                 <p className="text-muted-foreground text-sm md:text-base">Overview of your financial activity</p>
                 <AddTransactionDrawer />
@@ -35,6 +33,9 @@ export default function Dashboard() {
                 <div className="border-sidebar-border/70 dark:border-sidebar-border relative min-h-[100vh] flex-1 rounded-xl border md:min-h-min">
                     <RecentTransactionCard />
                 </div>
+            </div>
+            <div className="fixed right-4 bottom-20 md:hidden">
+                <AddTransactionDrawer />
             </div>
         </AppLayout>
     );
