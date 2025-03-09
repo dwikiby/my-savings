@@ -5,7 +5,22 @@ import { TotalTransactionCard } from '@/components/dashboard/total-transaction-c
 import { AddTransactionDrawer } from '@/components/transaction/add-transaction-drawer';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
+
+interface DashboardProps {
+    totalSavings: {
+        amount: number;
+        percentageChange: number;
+    };
+    totalExpense: {
+        amount: number;
+        percentageChange: number;
+    };
+    totalTransactions: {
+        count: number;
+        percentageChange: number;
+    };
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -15,6 +30,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Dashboard() {
+    const { props } = usePage<{ props: DashboardProps }>();
+    const { totalSavings, totalExpense, totalTransactions } = props;
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -25,9 +42,9 @@ export default function Dashboard() {
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 {/* Summary cards */}
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <TotalSavingsCard />
-                    <TotalExpenseCard />
-                    <TotalTransactionCard />
+                    <TotalSavingsCard data={totalSavings} />
+                    <TotalExpenseCard data={totalExpense} />
+                    <TotalTransactionCard data={totalTransactions} />
                 </div>
                 {/* Recent Transactions */}
                 <div className="border-sidebar-border/70 dark:border-sidebar-border relative min-h-[100vh] flex-1 rounded-xl border md:min-h-min">

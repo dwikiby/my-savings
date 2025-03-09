@@ -3,9 +3,14 @@ import { DollarSign, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
-const currentMonthSavings = 35000000 - 4459000;
+interface TotalSavingsCardProps {
+    data: {
+        amount: number;
+        percentageChange: number;
+    };
+}
 
-export function TotalSavingsCard() {
+export function TotalSavingsCard({ data }: TotalSavingsCardProps) {
     const [show, setShow] = useState(false);
     return (
         <Card>
@@ -15,14 +20,16 @@ export function TotalSavingsCard() {
             </CardHeader>
             <CardContent className="space-y-2">
                 <div className="flex items-center text-2xl font-bold">
-                    {show ? formatRupiah(currentMonthSavings) : 'Rp. ---'}
+                    {show ? formatRupiah(data.amount) : 'Rp. ---'}
                     {show ? (
                         <EyeOff className="ml-2 h-4 w-4 cursor-pointer" onClick={() => setShow(false)} />
                     ) : (
                         <Eye className="ml-2 h-4 w-4 cursor-pointer" onClick={() => setShow(true)} />
                     )}
                 </div>
-                <p className="text-muted-foreground text-xs">+20.1% from last month</p>
+                <p className="text-muted-foreground text-xs">
+                    {data.percentageChange >= 0 ? '↑' : '↓'} {Math.abs(data.percentageChange)}% from last month
+                </p>
             </CardContent>
         </Card>
     );

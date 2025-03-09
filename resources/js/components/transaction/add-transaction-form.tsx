@@ -59,7 +59,6 @@ export function AddTransactionForm({ onClose }: AddTransactionFormProps) {
                         resetData['type'] = data.type;
                         resetData['category'] = data.category;
                     }
-
                     resetData['remember_category'] = data.remember_category;
 
                     // Reset form dengan nilai yang dipertahankan

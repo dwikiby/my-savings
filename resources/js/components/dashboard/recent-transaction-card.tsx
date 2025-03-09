@@ -26,7 +26,7 @@ export function RecentTransactionCard() {
     const fetchRecentTransactions = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch('/api/recent-transactions?limit=5');
+            const response = await fetch('/api/recent-transactions?limit=7');
 
             if (!response.ok) {
                 throw new Error('Failed to fetch recent transactions');

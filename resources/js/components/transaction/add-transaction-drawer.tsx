@@ -45,13 +45,7 @@ export function AddTransactionDrawer({ className }: { className?: string }) {
                     </DrawerHeader>
                     <div className="flex-1 overflow-auto p-4">
                         <div className="mx-auto w-full max-w-3xl">
-                            <AddTransactionForm
-                                onSubmit={(values) => {
-                                    console.log('Transaction added:', values);
-                                    // Here you would typically save the transaction to your backend
-                                }}
-                                onClose={() => setOpen(false)}
-                            />
+                            <AddTransactionForm onClose={() => setOpen(false)} />
                         </div>
                     </div>
                     <DrawerFooter>
