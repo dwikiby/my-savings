@@ -17,7 +17,7 @@ class DashboardController extends Controller
 
         // Get total savings (all time)
         $totalSavings = Transaction::where('user_id', Auth::id())
-            ->select(DB::raw('COALESCE(SUM(CASE WHEN type = "income" THEN amount ELSE -amount END), 0) as total_savings'))
+            ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN CAST(amount AS NUMERIC) ELSE -CAST(amount AS NUMERIC) END), 0) as total_savings"))
             ->first()
             ->total_savings;
 
@@ -26,7 +26,7 @@ class DashboardController extends Controller
             ->where('type', 'expense')
             ->whereYear('transaction_date', $currentMonth->year)
             ->whereMonth('transaction_date', $currentMonth->month)
-            ->sum('amount');
+            ->sum(DB::raw("CAST(amount AS NUMERIC)"));
 
         // Get current month's transaction count
         $currentMonthTransactions = Transaction::where('user_id', Auth::id())
@@ -82,7 +82,7 @@ class DashboardController extends Controller
         $currentSavings = Transaction::where('user_id', Auth::id())
             ->whereYear('transaction_date', $currentMonth->year)
             ->whereMonth('transaction_date', $currentMonth->month)
-            ->select(DB::raw('COALESCE(SUM(CASE WHEN type = "income" THEN amount ELSE -amount END), 0) as savings'))
+            ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN CAST(amount AS NUMERIC) ELSE -CAST(amount AS NUMERIC) END), 0) as savings"))
             ->first()
             ->savings;
 
@@ -90,7 +90,7 @@ class DashboardController extends Controller
         $lastSavings = Transaction::where('user_id', Auth::id())
             ->whereYear('transaction_date', $lastMonth->year)
             ->whereMonth('transaction_date', $lastMonth->month)
-            ->select(DB::raw('COALESCE(SUM(CASE WHEN type = "income" THEN amount ELSE -amount END), 0) as savings'))
+            ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN CAST(amount AS NUMERIC) ELSE -CAST(amount AS NUMERIC) END), 0) as savings"))
             ->first()
             ->savings;
 
@@ -111,14 +111,14 @@ class DashboardController extends Controller
             ->where('type', 'expense')
             ->whereYear('transaction_date', $currentMonth->year)
             ->whereMonth('transaction_date', $currentMonth->month)
-            ->sum('amount');
+            ->sum(DB::raw("CAST(amount AS NUMERIC)"));
 
         // Last month's expense
         $lastExpense = Transaction::where('user_id', Auth::id())
             ->where('type', 'expense')
             ->whereYear('transaction_date', $lastMonth->year)
             ->whereMonth('transaction_date', $lastMonth->month)
-            ->sum('amount');
+            ->sum(DB::raw("CAST(amount AS NUMERIC)"));
 
         if ($lastExpense == 0) {
             return $currentExpense > 0 ? 100 : 0;
