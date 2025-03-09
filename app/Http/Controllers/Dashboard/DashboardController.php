@@ -8,55 +8,48 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
+    private const CACHE_TTL = 300; // 5 minutes in seconds
+
     public function index()
     {
+        $userId = Auth::id();
+        $currentMonth = Carbon::now()->format('Y-m');
+
+        // Get all dashboard data from cache or generate if not exists
+        $dashboardData = Cache::remember("dashboard_data_{$userId}_{$currentMonth}", self::CACHE_TTL, function () {
+            return $this->generateDashboardData();
+        });
+
+        return Inertia::render('dashboard', $dashboardData);
+    }
+
+    private function generateDashboardData()
+    {
+        $userId = Auth::id();
         $currentMonth = Carbon::now();
 
-        // Get total savings (all time)
-        $totalSavings = Transaction::where('user_id', Auth::id())
-            ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN CAST(amount AS NUMERIC) ELSE -CAST(amount AS NUMERIC) END), 0) as total_savings"))
-            ->first()
-            ->total_savings;
+        // Get total savings with cache
+        $totalSavings = $this->getTotalSavings();
 
-        // Get current month's expense
-        $currentMonthExpense = Transaction::where('user_id', Auth::id())
-            ->where('type', 'expense')
-            ->whereYear('transaction_date', $currentMonth->year)
-            ->whereMonth('transaction_date', $currentMonth->month)
-            ->sum(DB::raw("CAST(amount AS NUMERIC)"));
+        // Get current month's expense with cache
+        $currentMonthExpense = $this->getCurrentMonthExpense();
 
-        // Get current month's transaction count
-        $currentMonthTransactions = Transaction::where('user_id', Auth::id())
-            ->whereYear('transaction_date', $currentMonth->year)
-            ->whereMonth('transaction_date', $currentMonth->month)
-            ->count();
+        // Get current month's transaction count with cache
+        $currentMonthTransactions = $this->getCurrentMonthTransactions();
 
-        // Calculate percentage changes
+        // Calculate percentage changes with cache
         $savingsChange = $this->calculateSavingsChange();
         $expenseChange = $this->calculateExpenseChange();
         $transactionChange = $this->calculateTransactionChange();
 
-        // Get recent transactions
-        $recentTransactions = Transaction::where('user_id', Auth::id())
-            ->orderBy('transaction_date', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($transaction) {
-                return [
-                    'id' => $transaction->id,
-                    'date' => $transaction->transaction_date,
-                    'name' => $transaction->description,
-                    'category' => $transaction->category,
-                    'type' => $transaction->type,
-                    'amount' => $transaction->amount,
-                ];
-            });
+        // Get recent transactions with cache
+        $recentTransactions = $this->getRecentTransactions();
 
-        return Inertia::render('dashboard', [
+        return [
             'totalSavings' => [
                 'amount' => $totalSavings,
                 'percentageChange' => $savingsChange
@@ -70,84 +63,183 @@ class DashboardController extends Controller
                 'percentageChange' => $transactionChange
             ],
             'recentTransactions' => $recentTransactions
-        ]);
+        ];
+    }
+
+    private function getTotalSavings()
+    {
+        $userId = Auth::id();
+        $cacheKey = "total_savings_{$userId}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            return Transaction::where('user_id', $userId)
+                ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0) as total_savings"))
+                ->first()
+                ->total_savings;
+        });
+    }
+
+    private function getCurrentMonthExpense()
+    {
+        $userId = Auth::id();
+        $currentMonth = Carbon::now()->format('Y-m');
+        $cacheKey = "current_month_expense_{$userId}_{$currentMonth}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            $currentMonth = Carbon::now();
+            return Transaction::where('user_id', $userId)
+                ->where('type', 'expense')
+                ->whereYear('transaction_date', $currentMonth->year)
+                ->whereMonth('transaction_date', $currentMonth->month)
+                ->sum('amount');
+        });
+    }
+
+    private function getCurrentMonthTransactions()
+    {
+        $userId = Auth::id();
+        $currentMonth = Carbon::now()->format('Y-m');
+        $cacheKey = "current_month_transactions_{$userId}_{$currentMonth}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            $currentMonth = Carbon::now();
+            return Transaction::where('user_id', $userId)
+                ->whereYear('transaction_date', $currentMonth->year)
+                ->whereMonth('transaction_date', $currentMonth->month)
+                ->count();
+        });
     }
 
     private function calculateSavingsChange()
     {
-        $currentMonth = Carbon::now();
-        $lastMonth = Carbon::now()->subMonth();
+        $userId = Auth::id();
+        $currentMonth = Carbon::now()->format('Y-m');
+        $cacheKey = "savings_change_{$userId}_{$currentMonth}";
 
-        // Current month's savings
-        $currentSavings = Transaction::where('user_id', Auth::id())
-            ->whereYear('transaction_date', $currentMonth->year)
-            ->whereMonth('transaction_date', $currentMonth->month)
-            ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN CAST(amount AS NUMERIC) ELSE -CAST(amount AS NUMERIC) END), 0) as savings"))
-            ->first()
-            ->savings;
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            $currentMonth = Carbon::now();
+            $lastMonth = Carbon::now()->subMonth();
 
-        // Last month's savings
-        $lastSavings = Transaction::where('user_id', Auth::id())
-            ->whereYear('transaction_date', $lastMonth->year)
-            ->whereMonth('transaction_date', $lastMonth->month)
-            ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN CAST(amount AS NUMERIC) ELSE -CAST(amount AS NUMERIC) END), 0) as savings"))
-            ->first()
-            ->savings;
+            // Current month's savings
+            $currentSavings = $this->getMonthSavings($currentMonth);
+            $lastSavings = $this->getMonthSavings($lastMonth);
 
-        if ($lastSavings == 0) {
-            return $currentSavings > 0 ? 100 : 0;
-        }
+            if ($lastSavings == 0) {
+                return $currentSavings > 0 ? 100 : 0;
+            }
 
-        return round((($currentSavings - $lastSavings) / abs($lastSavings)) * 100, 2);
+            return round((($currentSavings - $lastSavings) / abs($lastSavings)) * 100, 2);
+        });
+    }
+
+    private function getMonthSavings(Carbon $month)
+    {
+        $userId = Auth::id();
+        $monthKey = $month->format('Y-m');
+        $cacheKey = "month_savings_{$userId}_{$monthKey}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $month) {
+            return Transaction::where('user_id', $userId)
+                ->whereYear('transaction_date', $month->year)
+                ->whereMonth('transaction_date', $month->month)
+                ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0) as savings"))
+                ->first()
+                ->savings;
+        });
     }
 
     private function calculateExpenseChange()
     {
-        $currentMonth = Carbon::now();
-        $lastMonth = Carbon::now()->subMonth();
+        $userId = Auth::id();
+        $currentMonth = Carbon::now()->format('Y-m');
+        $cacheKey = "expense_change_{$userId}_{$currentMonth}";
 
-        // Current month's expense
-        $currentExpense = Transaction::where('user_id', Auth::id())
-            ->where('type', 'expense')
-            ->whereYear('transaction_date', $currentMonth->year)
-            ->whereMonth('transaction_date', $currentMonth->month)
-            ->sum(DB::raw("CAST(amount AS NUMERIC)"));
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            $currentMonth = Carbon::now();
+            $lastMonth = Carbon::now()->subMonth();
 
-        // Last month's expense
-        $lastExpense = Transaction::where('user_id', Auth::id())
-            ->where('type', 'expense')
-            ->whereYear('transaction_date', $lastMonth->year)
-            ->whereMonth('transaction_date', $lastMonth->month)
-            ->sum(DB::raw("CAST(amount AS NUMERIC)"));
+            $currentExpense = $this->getMonthExpense($currentMonth);
+            $lastExpense = $this->getMonthExpense($lastMonth);
 
-        if ($lastExpense == 0) {
-            return $currentExpense > 0 ? 100 : 0;
-        }
+            if ($lastExpense == 0) {
+                return $currentExpense > 0 ? 100 : 0;
+            }
 
-        return round((($currentExpense - $lastExpense) / $lastExpense) * 100, 2);
+            return round((($currentExpense - $lastExpense) / $lastExpense) * 100, 2);
+        });
+    }
+
+    private function getMonthExpense(Carbon $month)
+    {
+        $userId = Auth::id();
+        $monthKey = $month->format('Y-m');
+        $cacheKey = "month_expense_{$userId}_{$monthKey}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $month) {
+            return Transaction::where('user_id', $userId)
+                ->where('type', 'expense')
+                ->whereYear('transaction_date', $month->year)
+                ->whereMonth('transaction_date', $month->month)
+                ->sum('amount');
+        });
     }
 
     private function calculateTransactionChange()
     {
-        $currentMonth = Carbon::now();
-        $lastMonth = Carbon::now()->subMonth();
+        $userId = Auth::id();
+        $currentMonth = Carbon::now()->format('Y-m');
+        $cacheKey = "transaction_change_{$userId}_{$currentMonth}";
 
-        // Current month's transaction count
-        $currentCount = Transaction::where('user_id', Auth::id())
-            ->whereYear('transaction_date', $currentMonth->year)
-            ->whereMonth('transaction_date', $currentMonth->month)
-            ->count();
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            $currentMonth = Carbon::now();
+            $lastMonth = Carbon::now()->subMonth();
 
-        // Last month's transaction count
-        $lastCount = Transaction::where('user_id', Auth::id())
-            ->whereYear('transaction_date', $lastMonth->year)
-            ->whereMonth('transaction_date', $lastMonth->month)
-            ->count();
+            $currentCount = $this->getMonthTransactionCount($currentMonth);
+            $lastCount = $this->getMonthTransactionCount($lastMonth);
 
-        if ($lastCount == 0) {
-            return $currentCount > 0 ? 100 : 0;
-        }
+            if ($lastCount == 0) {
+                return $currentCount > 0 ? 100 : 0;
+            }
 
-        return round((($currentCount - $lastCount) / $lastCount) * 100, 2);
+            return round((($currentCount - $lastCount) / $lastCount) * 100, 2);
+        });
+    }
+
+    private function getMonthTransactionCount(Carbon $month)
+    {
+        $userId = Auth::id();
+        $monthKey = $month->format('Y-m');
+        $cacheKey = "month_transaction_count_{$userId}_{$monthKey}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $month) {
+            return Transaction::where('user_id', $userId)
+                ->whereYear('transaction_date', $month->year)
+                ->whereMonth('transaction_date', $month->month)
+                ->count();
+        });
+    }
+
+    private function getRecentTransactions()
+    {
+        $userId = Auth::id();
+        $cacheKey = "recent_transactions_{$userId}";
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            return Transaction::where('user_id', $userId)
+                ->orderBy('transaction_date', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->limit(7)
+                ->get()
+                ->map(function ($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'date' => $transaction->transaction_date,
+                        'name' => $transaction->description,
+                        'category' => $transaction->category,
+                        'type' => $transaction->type,
+                        'amount' => $transaction->amount,
+                    ];
+                });
+        });
     }
 }
