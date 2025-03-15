@@ -80,7 +80,13 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     </div>
 
                     <div className="flex items-center space-x-3">
-                        <Checkbox id="remember" name="remember" tabIndex={3} />
+                        <Checkbox
+                            id="remember"
+                            name="remember"
+                            tabIndex={3}
+                            checked={data.remember}
+                            onCheckedChange={(checked) => setData('remember', checked === true)}
+                        />
                         <Label htmlFor="remember">Remember me</Label>
                     </div>
 
