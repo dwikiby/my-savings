@@ -46,10 +46,6 @@ export function AddTransactionForm({ onClose }: AddTransactionFormProps) {
             description: result.description,
             category: result.category || (result.type === 'income' ? 'Other Income' : 'Other Expenses'),
         });
-
-        toast.success('Voice input processed', {
-            description: `${result.type}: Rp${result.amount.toLocaleString('id-ID')}`,
-        });
     };
 
     const handleSubmit = (e: React.FormEvent, addAnother = false) => {
