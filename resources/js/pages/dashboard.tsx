@@ -20,6 +20,14 @@ interface DashboardProps {
         count: number;
         percentageChange: number;
     };
+    recentTransactions: Array<{
+        id: number;
+        date: string;
+        name: string;
+        category: string;
+        type: string;
+        amount: number;
+    }>;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -31,7 +39,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Dashboard() {
     const { props } = usePage<{ props: DashboardProps }>();
-    const { totalSavings, totalExpense, totalTransactions } = props;
+    const { totalSavings, totalExpense, totalTransactions, recentTransactions } = props;
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -48,7 +56,7 @@ export default function Dashboard() {
                 </div>
                 {/* Recent Transactions */}
                 <div className="border-sidebar-border/70 dark:border-sidebar-border relative min-h-[100vh] flex-1 rounded-xl border md:min-h-min">
-                    <RecentTransactionCard />
+                    <RecentTransactionCard transactions={recentTransactions} />
                 </div>
             </div>
             <div className="fixed right-4 bottom-20 md:hidden">
