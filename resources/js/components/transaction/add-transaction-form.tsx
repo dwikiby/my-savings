@@ -1,11 +1,5 @@
 'use client';
 
-import { useForm } from '@inertiajs/react';
-import { format } from 'date-fns';
-import { CalendarIcon, Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
-
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,6 +9,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { useForm } from '@inertiajs/react';
+import { format } from 'date-fns';
+import { CalendarIcon, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { VoiceInput } from '../voice-input/voice-input';
 
 const categories = {
     income: ['Salary', 'Freelance', 'Investments', 'Other Income'],
@@ -26,6 +26,7 @@ interface AddTransactionFormProps {
 }
 
 export function AddTransactionForm({ onClose }: AddTransactionFormProps) {
+    const [isListening, setIsListening] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -36,6 +37,20 @@ export function AddTransactionForm({ onClose }: AddTransactionFormProps) {
         transaction_date: format(new Date(), 'yyyy-MM-dd'),
         remember_category: false,
     });
+
+    const handleVoiceResult = (result: { type: 'income' | 'expense'; amount: number; description: string; category?: string }) => {
+        setData({
+            ...data,
+            type: result.type,
+            amount: result.amount.toString(),
+            description: result.description,
+            category: result.category || (result.type === 'income' ? 'Other Income' : 'Other Expenses'),
+        });
+
+        toast.success('Voice input processed', {
+            description: `${result.type}: Rp${result.amount.toLocaleString('id-ID')}`,
+        });
+    };
 
     const handleSubmit = (e: React.FormEvent, addAnother = false) => {
         e.preventDefault();
@@ -83,24 +98,33 @@ export function AddTransactionForm({ onClose }: AddTransactionFormProps) {
         });
     };
 
+    useEffect(() => {
+        return () => {
+            if (isListening) {
+                setIsListening(false);
+            }
+        };
+    }, [isListening]);
     return (
         <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="space-y-2">
                 <Label htmlFor="amount">Amount</Label>
-                <div className="relative">
-                    <span className="absolute top-1.5 left-3">Rp</span>
-                    <Input
-                        id="amount"
-                        type="text"
-                        className="pl-9"
-                        placeholder="0"
-                        value={data.amount}
-                        onChange={(e) => {
-                            // Only allow numbers
-                            const value = e.target.value.replace(/[^\d]/g, '');
-                            setData('amount', value);
-                        }}
-                    />
+                <div className="flex items-start gap-2">
+                    <div className="relative flex-1">
+                        <span className="absolute top-1.5 left-3">Rp</span>
+                        <Input
+                            id="amount"
+                            type="text"
+                            className="pl-9"
+                            placeholder="0"
+                            value={data.amount}
+                            onChange={(e) => {
+                                const value = e.target.value.replace(/[^\d]/g, '');
+                                setData('amount', value);
+                            }}
+                        />
+                    </div>
+                    <VoiceInput onResult={handleVoiceResult} isListening={isListening} setIsListening={setIsListening} />
                 </div>
                 {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount}</p>}
                 <p className="text-muted-foreground text-xs">Enter amount in Rupiah without dots or commas</p>

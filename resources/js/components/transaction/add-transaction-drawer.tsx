@@ -14,13 +14,25 @@ import {
     DrawerTitle,
     DrawerTrigger,
 } from '@/components/ui/drawer';
+import { VoiceInputHelp } from '../voice-input/voice-input-help';
 import { AddTransactionForm } from './add-transaction-form';
 
 export function AddTransactionDrawer({ className }: { className?: string }) {
     const [open, setOpen] = useState(false);
 
+    const handleClose = () => {
+        setOpen(false);
+    };
     return (
-        <Drawer open={open} onOpenChange={setOpen}>
+        <Drawer
+            open={open}
+            onOpenChange={(isOpen) => {
+                setOpen(isOpen);
+                if (!isOpen) {
+                    handleClose();
+                }
+            }}
+        >
             <DrawerTrigger asChild>
                 <Button size="sm" className={className}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -31,6 +43,7 @@ export function AddTransactionDrawer({ className }: { className?: string }) {
                 <div className="flex h-full flex-col">
                     <DrawerHeader className="border-b">
                         <div className="flex items-center justify-between">
+                            <VoiceInputHelp />
                             <DrawerTitle>Add New Transaction</DrawerTitle>
                             <DrawerClose asChild>
                                 <Button variant="ghost" size="icon">
@@ -45,7 +58,7 @@ export function AddTransactionDrawer({ className }: { className?: string }) {
                     </DrawerHeader>
                     <div className="flex-1 overflow-auto p-4">
                         <div className="mx-auto w-full max-w-3xl">
-                            <AddTransactionForm onClose={() => setOpen(false)} />
+                            <AddTransactionForm onClose={handleClose} />
                         </div>
                     </div>
                     <DrawerFooter>
