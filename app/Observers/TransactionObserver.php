@@ -20,6 +20,7 @@ class TransactionObserver
         Cache::forget("expense_change_{$userId}_{$currentMonth}");
         Cache::forget("transaction_change_{$userId}_{$currentMonth}");
         Cache::forget("recent_transactions_{$userId}");
+        Cache::forget("report_transaction_{$userId}");
     }
 
     public function created(Transaction $transaction)
