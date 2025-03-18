@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 
 interface Transaction {
     id: number;
@@ -79,11 +79,6 @@ export function RecentTransactionCard({ transactions }: RecentTransactionCardPro
                     </TableBody>
                 </Table>
             </CardContent>
-            <CardFooter className="flex justify-between">
-                <Button variant="outline" size="sm">
-                    Export
-                </Button>
-            </CardFooter>
         </Card>
     );
 }

@@ -9,41 +9,40 @@ use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\Request;
+
 
 class DashboardController extends Controller
 {
     private const CACHE_TTL = 300; // 5 minutes in seconds
 
-    public function index()
+    public function index(Request $request)
     {
         $userId = Auth::id();
-        $currentMonth = Carbon::now()->format('Y-m');
+        $period = $request->get('period', 'month');
+        $cacheKey = "dashboard_data_{$userId}_{$period}_" . Carbon::now()->format('Y-m-d');
 
-        // Get all dashboard data from cache or generate if not exists
-        $dashboardData = Cache::remember("dashboard_data_{$userId}_{$currentMonth}", self::CACHE_TTL, function () {
-            return $this->generateDashboardData();
+        $dashboardData = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($period) {
+            return $this->generateDashboardData($period);
         });
 
         return Inertia::render('dashboard', $dashboardData);
     }
 
-    private function generateDashboardData()
+    private function generateDashboardData($period)
     {
-        $userId = Auth::id();
-        $currentMonth = Carbon::now();
-
         // Get total savings with cache
         $totalSavings = $this->getTotalSavings();
 
-        // Get current month's expense with cache
-        $currentMonthExpense = $this->getCurrentMonthExpense();
+        // Get current expense with cache
+        $currentExpense = $this->getExpenseByPeriod($period);
 
         // Get current month's transaction count with cache
         $currentMonthTransactions = $this->getCurrentMonthTransactions();
 
         // Calculate percentage changes with cache
         $savingsChange = $this->calculateSavingsChange();
-        $expenseChange = $this->calculateExpenseChange();
+        $expenseChange = $this->calculateExpenseChange($period);
         $transactionChange = $this->calculateTransactionChange();
 
         // Get recent transactions with cache
@@ -55,8 +54,9 @@ class DashboardController extends Controller
                 'percentageChange' => $savingsChange
             ],
             'totalExpense' => [
-                'amount' => $currentMonthExpense,
-                'percentageChange' => $expenseChange
+                'amount' => $currentExpense,
+                'percentageChange' => $expenseChange,
+                'period' => $period
             ],
             'totalTransactions' => [
                 'count' => $currentMonthTransactions,
@@ -79,20 +79,81 @@ class DashboardController extends Controller
         });
     }
 
-    private function getCurrentMonthExpense()
+    private function getExpenseByPeriod($period)
     {
         $userId = Auth::id();
-        $currentMonth = Carbon::now()->format('Y-m');
-        $cacheKey = "current_month_expense_{$userId}_{$currentMonth}";
+        $cacheKey = "expense_{$period}_{$userId}_" . Carbon::now()->format('Y-m-d');
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
-            $currentMonth = Carbon::now();
-            return Transaction::where('user_id', $userId)
-                ->where('type', 'expense')
-                ->whereYear('transaction_date', $currentMonth->year)
-                ->whereMonth('transaction_date', $currentMonth->month)
-                ->sum('amount');
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $period) {
+            $query = Transaction::where('user_id', $userId)
+                ->where('type', 'expense');
+
+            switch ($period) {
+                case 'today':
+                    $query->whereDate('transaction_date', Carbon::today());
+                    break;
+                case 'week':
+                    $query->whereBetween('transaction_date', [
+                        Carbon::now()->startOfWeek(),
+                        Carbon::now()->endOfWeek()
+                    ]);
+                    break;
+                case 'month':
+                    $query->whereYear('transaction_date', Carbon::now()->year)
+                        ->whereMonth('transaction_date', Carbon::now()->month);
+                    break;
+                case 'year':
+                    $query->whereYear('transaction_date', Carbon::now()->year);
+                    break;
+            }
+
+            return $query->sum('amount');
         });
+    }
+
+    private function calculateExpenseChange($period)
+    {
+        $userId = Auth::id();
+        $cacheKey = "expense_change_{$period}_{$userId}_" . Carbon::now()->format('Y-m-d');
+
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $period) {
+            $currentAmount = $this->getExpenseByPeriod($period);
+            $previousAmount = $this->getPreviousPeriodExpense($period);
+
+            if ($previousAmount == 0) {
+                return 0;
+            }
+
+            return round((($currentAmount - $previousAmount) / $previousAmount) * 100, 2);
+        });
+    }
+
+    private function getPreviousPeriodExpense($period)
+    {
+        $userId = Auth::id();
+        $query = Transaction::where('user_id', $userId)
+            ->where('type', 'expense');
+
+        switch ($period) {
+            case 'today':
+                $query->whereDate('transaction_date', Carbon::yesterday());
+                break;
+            case 'week':
+                $query->whereBetween('transaction_date', [
+                    Carbon::now()->subWeek()->startOfWeek(),
+                    Carbon::now()->subWeek()->endOfWeek()
+                ]);
+                break;
+            case 'month':
+                $query->whereYear('transaction_date', Carbon::now()->subMonth()->year)
+                    ->whereMonth('transaction_date', Carbon::now()->subMonth()->month);
+                break;
+            case 'year':
+                $query->whereYear('transaction_date', Carbon::now()->subYear()->year);
+                break;
+        }
+
+        return $query->sum('amount');
     }
 
     private function getCurrentMonthTransactions()
@@ -145,42 +206,6 @@ class DashboardController extends Controller
                 ->select(DB::raw("COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0) as savings"))
                 ->first()
                 ->savings;
-        });
-    }
-
-    private function calculateExpenseChange()
-    {
-        $userId = Auth::id();
-        $currentMonth = Carbon::now()->format('Y-m');
-        $cacheKey = "expense_change_{$userId}_{$currentMonth}";
-
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
-            $currentMonth = Carbon::now();
-            $lastMonth = Carbon::now()->subMonth();
-
-            $currentExpense = $this->getMonthExpense($currentMonth);
-            $lastExpense = $this->getMonthExpense($lastMonth);
-
-            if ($lastExpense == 0) {
-                return $currentExpense > 0 ? 100 : 0;
-            }
-
-            return round((($currentExpense - $lastExpense) / $lastExpense) * 100, 2);
-        });
-    }
-
-    private function getMonthExpense(Carbon $month)
-    {
-        $userId = Auth::id();
-        $monthKey = $month->format('Y-m');
-        $cacheKey = "month_expense_{$userId}_{$monthKey}";
-
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $month) {
-            return Transaction::where('user_id', $userId)
-                ->where('type', 'expense')
-                ->whereYear('transaction_date', $month->year)
-                ->whereMonth('transaction_date', $month->month)
-                ->sum('amount');
         });
     }
 

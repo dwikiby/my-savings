@@ -55,9 +55,7 @@ export default function Dashboard() {
                     <TotalTransactionCard data={totalTransactions} />
                 </div>
                 {/* Recent Transactions */}
-                <div className="border-sidebar-border/70 dark:border-sidebar-border relative min-h-[100vh] flex-1 rounded-xl border md:min-h-min">
-                    <RecentTransactionCard transactions={recentTransactions} />
-                </div>
+                <RecentTransactionCard transactions={recentTransactions} />
             </div>
             <div className="fixed right-4 bottom-20 md:hidden">
                 <AddTransactionDrawer />
