@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { formatRupiah } from '@/lib/utils';
@@ -86,6 +87,12 @@ export default function Report({ transactions }: RecentTransactionCardProps) {
                         </TableBody>
                     </Table>
                 </CardContent>
+                {/* pagination section */}
+                <CardFooter className="flex justify-between">
+                    <Button variant="outline" size="sm">
+                        Previous
+                    </Button>
+                </CardFooter>
             </Card>
         </AppLayout>
     );

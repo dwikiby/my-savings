@@ -13,19 +13,8 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard routes
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    // API routes for dashboard cards
-    Route::prefix('api/dashboard')->name('api.dashboard.')->group(function () {
-        Route::get('total-savings', [DashboardController::class, 'getTotalSavings'])->name('total-savings');
-        Route::get('total-expense', [DashboardController::class, 'getTotalExpense'])->name('total-expense');
-        Route::get('total-transactions', [DashboardController::class, 'getTotalTransactions'])->name('total-transactions');
-    });
     // Transactions
-    Route::resource('transactions', TransactionController::class);
-
-    // Route for recent transactions
-    Route::get('/api/recent-transactions', [TransactionController::class, 'getRecentTransactions'])
-        ->name('api.transactions.recent');
-    
+    Route::resource('transactions', TransactionController::class)->only('store', 'show', 'update', 'destroy');
     // Report
     Route::get('report', [ReportController::class, 'index'])->name('report');
 });

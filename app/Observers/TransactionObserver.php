@@ -9,16 +9,20 @@ class TransactionObserver
 {
     private function clearUserCache($userId)
     {
-        $currentMonth = now()->format('Y-m');
+        $currentDate = now()->format('Y-m-d');
+        $periods = ['today', 'week', 'month', 'year'];
 
-        // Clear all related caches
-        Cache::forget("dashboard_data_{$userId}_{$currentMonth}");
+        foreach ($periods as $period) {
+            Cache::forget("dashboard_data_{$userId}_{$period}_{$currentDate}");
+            Cache::forget("expense_{$period}_{$userId}_{$currentDate}");
+            Cache::forget("expense_change_{$period}_{$userId}_{$currentDate}");
+        }
+
+        // Clear other related caches
         Cache::forget("total_savings_{$userId}");
-        Cache::forget("current_month_expense_{$userId}_{$currentMonth}");
-        Cache::forget("current_month_transactions_{$userId}_{$currentMonth}");
-        Cache::forget("savings_change_{$userId}_{$currentMonth}");
-        Cache::forget("expense_change_{$userId}_{$currentMonth}");
-        Cache::forget("transaction_change_{$userId}_{$currentMonth}");
+        Cache::forget("current_month_transactions_{$userId}_{$currentDate}");
+        Cache::forget("savings_change_{$userId}_{$currentDate}");
+        Cache::forget("transaction_change_{$userId}_{$currentDate}");
         Cache::forget("recent_transactions_{$userId}");
         Cache::forget("report_transaction_{$userId}");
     }

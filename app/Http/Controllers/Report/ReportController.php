@@ -20,9 +20,9 @@ class ReportController extends Controller
         $recentTransactions = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
             return $this->getRecentTransactions($userId);
         });
-    
+
         $recentTransactions = $recentTransactions->toArray();
-    
+
         return Inertia::render('report', [
             'transactions' => $recentTransactions,
         ]);
