@@ -1,11 +1,11 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { formatRupiah } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 
@@ -26,10 +26,26 @@ interface Transaction {
 }
 
 interface RecentTransactionCardProps {
-    transactions: Transaction[];
+    transactions: {
+        data: Transaction[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
 }
 
 export default function Report({ transactions }: RecentTransactionCardProps) {
+    const handlePageChange = (page: number) => {
+        router.get(
+            '/report',
+            { page },
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    };
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Report" />
@@ -51,8 +67,8 @@ export default function Report({ transactions }: RecentTransactionCardProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {transactions.length > 0 ? (
-                                transactions.map((transaction: any) => (
+                            {transactions.data.length > 0 ? (
+                                transactions.data.map((transaction: Transaction) => (
                                     <TableRow key={transaction.id}>
                                         <TableCell>{format(new Date(transaction.date), 'dd MMM yyyy')}</TableCell>
                                         <TableCell>{transaction.name}</TableCell>
@@ -89,9 +105,33 @@ export default function Report({ transactions }: RecentTransactionCardProps) {
                 </CardContent>
                 {/* pagination section */}
                 <CardFooter className="flex justify-between">
-                    <Button variant="outline" size="sm">
-                        Previous
-                    </Button>
+                    <Pagination>
+                        <PaginationContent>
+                            {transactions.current_page > 1 && (
+                                <PaginationItem>
+                                    <PaginationPrevious href="#" onClick={() => handlePageChange(transactions.current_page - 1)} />
+                                </PaginationItem>
+                            )}
+
+                            {[...Array(transactions.last_page)].map((_, index) => (
+                                <PaginationItem key={index + 1}>
+                                    <PaginationLink
+                                        href="#"
+                                        onClick={() => handlePageChange(index + 1)}
+                                        isActive={transactions.current_page === index + 1}
+                                    >
+                                        {index + 1}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            ))}
+
+                            {transactions.current_page < transactions.last_page && (
+                                <PaginationItem>
+                                    <PaginationNext href="#" onClick={() => handlePageChange(transactions.current_page + 1)} />
+                                </PaginationItem>
+                            )}
+                        </PaginationContent>
+                    </Pagination>
                 </CardFooter>
             </Card>
         </AppLayout>

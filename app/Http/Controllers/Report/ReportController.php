@@ -12,30 +12,29 @@ use Illuminate\Support\Facades\Auth;
 class ReportController extends Controller
 {
     private const CACHE_TTL = 300;
-    public function index()
+    private const PER_PAGE = 17;
+    public function index(Request $request)
     {
         $userId = Auth::id();
-        $cacheKey = "report_transaction_{$userId}";
+        $page = $request->input('page', 1);
+        $cacheKey = "report_transaction_{$userId}_page_{$page}";
 
-        $recentTransactions = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
-            return $this->getRecentTransactions($userId);
+        $transactions = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+            return $this->getTransactions($userId);
         });
 
-        $recentTransactions = $recentTransactions->toArray();
-
         return Inertia::render('report', [
-            'transactions' => $recentTransactions,
+            'transactions' => $transactions
         ]);
     }
 
-    public function getRecentTransactions($userId)
+    public function getTransactions($userId)
     {
         return Transaction::where('user_id', $userId)
             ->orderBy('transaction_date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->limit(17)
-            ->get()
-            ->map(function ($transaction) {
+            ->paginate(self::PER_PAGE)
+            ->through(function ($transaction) {
                 return [
                     'id' => $transaction->id,
                     'date' => $transaction->transaction_date,

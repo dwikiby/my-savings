@@ -24,6 +24,21 @@ class TransactionObserver
         Cache::forget("savings_change_{$userId}_{$currentDate}");
         Cache::forget("transaction_change_{$userId}_{$currentDate}");
         Cache::forget("recent_transactions_{$userId}");
+
+        // Clear report pagination caches
+        $this->clearReportPaginationCache($userId);
+    }
+
+    private function clearReportPaginationCache($userId)
+    {
+        // Get total number of transactions to calculate max pages
+        $totalTransactions = Transaction::where('user_id', $userId)->count();
+        $perPage = 17;
+        $maxPages = ceil($totalTransactions / $perPage);
+
+        for ($page = 1; $page <= $maxPages; $page++) {
+            Cache::forget("report_transaction_{$userId}_page_{$page}");
+        }
         Cache::forget("report_transaction_{$userId}");
     }
 
