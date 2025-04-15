@@ -7,6 +7,15 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 
+interface Transaction {
+    id: number;
+    date: string;
+    name: string;
+    category: string;
+    type: 'income' | 'expense';
+    amount: number;
+}
+
 interface DashboardProps {
     totalSavings: {
         amount: number;
@@ -20,14 +29,7 @@ interface DashboardProps {
         count: number;
         percentageChange: number;
     };
-    recentTransactions: Array<{
-        id: number;
-        date: string;
-        name: string;
-        category: string;
-        type: string;
-        amount: number;
-    }>;
+    recentTransactions: Transaction[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -50,12 +52,12 @@ export default function Dashboard() {
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 {/* Summary cards */}
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <TotalSavingsCard data={totalSavings} />
-                    <TotalExpenseCard data={totalExpense} />
-                    <TotalTransactionCard data={totalTransactions} />
+                    <TotalSavingsCard data={totalSavings as { amount: number; percentageChange: number }} />
+                    <TotalExpenseCard data={totalExpense as { amount: number; percentageChange: number; period?: string | undefined }} />
+                    <TotalTransactionCard data={totalTransactions as { count: number; percentageChange: number }} />
                 </div>
                 {/* Recent Transactions */}
-                <RecentTransactionCard transactions={recentTransactions} />
+                <RecentTransactionCard transactions={recentTransactions as Transaction[]} />
             </div>
             <div className="fixed right-4 bottom-20 md:hidden">
                 <AddTransactionDrawer />

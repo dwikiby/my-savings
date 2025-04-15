@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    private const CACHE_TTL = 300; // 5 minutes in seconds
+    private const CACHE_TTL = 300;
 
     public function index(Request $request)
     {

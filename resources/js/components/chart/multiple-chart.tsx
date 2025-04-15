@@ -29,7 +29,7 @@ export function MultipleChart() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Monthly Chart - Savings</CardTitle>
+                <CardTitle>Chart - Savings vs Expenses</CardTitle>
                 <CardDescription>January - June 2025</CardDescription>
             </CardHeader>
             <CardContent>
